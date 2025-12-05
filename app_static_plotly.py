@@ -159,7 +159,8 @@ app.layout = html.Div(style=styles['page_container'], children=[
         create_kpi_card('Order Count', f'{total_orders:,}')
     ]),
 
-    # ROW 2: Bar Charts
+    # ROW 2: Bar Charts 
+    # dcc.Graph 是 Dash 的核心组件，用于渲染 Plotly figure 对象 
     html.Div(style=styles['row'], children=[
         # Chart 1
         html.Div(style=styles['chart_card'], children=[
