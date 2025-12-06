@@ -9,7 +9,7 @@ import numpy as np
 import os
 
 # ┌──────────────────────────────────────────────────────────────────────────────┐
-# │ 1. DATA LOADING & PREPROCESSING (真实数据 + 模拟兜底)                         │
+# │ 1. DATA LOADING & PREPROCESSING                                              │
 # └──────────────────────────────────────────────────────────────────────────────┘
 def load_data():
     """
@@ -296,7 +296,7 @@ def update_visuals(sel_sub, sel_state, sel_cust):
     # 状态栏文字
     status_text = f"Current Filters: Sub-Category='{sel_sub}' | State='{sel_state}' | Customer='{sel_cust}'"
 
-    return k_amt, k_prof, k_qty, k_ords, fig_sub, fig_state, fig_cust, status_text
+    return k_amt, k_prof, k_qty, k_ords, fig_sub, fig_state, fig_cust, status_text 
 
 if __name__ == "__main__":
     app.run_server(debug=True, port=8050)
