@@ -1,39 +1,36 @@
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ 1. Imports                                                                   │
+# └──────────────────────────────────────────────────────────────────────────────┘
 from dash import Dash, html, dcc
 import pandas as pd
 import altair as alt
 import dash_vega_components as dvc
 
 # ┌──────────────────────────────────────────────────────────────────────────────┐
-# │ 1. 数据加载 (Data Loading)                                                  │
+# │ 2. Data loading & processing                                                 │
 # └──────────────────────────────────────────────────────────────────────────────┘
-# Assuming these files exist in your directory
 df_details = pd.read_csv('Details.csv')
 df_orders = pd.read_csv('Orders.csv')
 
-# ┌──────────────────────────────────────────────────────────────────────────────┐
-# │ 2. 数据合并 (Data Merging)                                                  │
-# └──────────────────────────────────────────────────────────────────────────────┘
+# --- Data Merging --- 
 df_global = pd.merge(df_details, df_orders, on="Order ID", how="inner")
 
-# ┌──────────────────────────────────────────────────────────────────────────────┐
-# │ 3. 数据清洗 (Data Cleaning)                                                 │
-# └──────────────────────────────────────────────────────────────────────────────┘
+# --- Data Cleaning ---
 if "Sub-Category" in df_global.columns:
     df_global["Sub-Category"] = df_global["Sub-Category"].astype(str).str.strip()
 if "Category" in df_global.columns:
     df_global["Category"] = df_global["Category"].astype(str).str.strip()
 
 # ┌──────────────────────────────────────────────────────────────────────────────┐
-# │ 4. 计算核心指标 (Calculate Global KPIs)                                     │
+# │ 3. KPI & Chart Data calculations                                                             │
 # └──────────────────────────────────────────────────────────────────────────────┘
+# --- Calculate Global KPIs ---
 total_amount = df_global['Amount'].sum()
 total_profit = df_global['Profit'].sum()
 total_quantity = df_global['Quantity'].sum()
 total_orders = df_global['Order ID'].nunique()
 
-# ┌──────────────────────────────────────────────────────────────────────────────┐
-# │ 5. 准备图表数据 (Prepare Chart Data)                                        │
-# └──────────────────────────────────────────────────────────────────────────────┘
+# --- Prepare Chart Data ---
 # Chart 1 Data: Profit by Sub-Category
 df_sub_cat = df_global.groupby('Sub-Category')['Profit'].sum().reset_index()
 
@@ -45,66 +42,9 @@ df_state = df_state.sort_values(by='Amount', ascending=False).head(10)
 df_customer = df_global.groupby('CustomerName')['Amount'].sum().reset_index()
 df_customer = df_customer.sort_values(by='Amount', ascending=False).head(10)
 
-# ┌──────────────────────────────────────────────────────────────────────────────┐
-# │ 6. 使用 Altair 创建 Vega-Lite 图表 (Generate Vega Charts)                    │
-# └──────────────────────────────────────────────────────────────────────────────┘
-
-# Helper to keep charts consistent
-def create_base_chart(data, x_col, y_col, title, color_hex=None, sort_y=True):
-    # Base chart definition
-    base = alt.Chart(data).encode(
-        # X Axis with sort logic
-        x=alt.X(x_col, sort='-y' if sort_y else None, axis=alt.Axis(labelAngle=-45)),
-        y=y_col,
-        tooltip=[x_col, y_col]
-    ).properties(
-        title=title,
-        height=280, # Fits inside the card height
-        width='container' # Responsive width
-    )
-    
-    # Mark definition (Bar)
-    if color_hex:
-        chart = base.mark_bar(color=color_hex)
-    else:
-        # Default Altair blue if no color specified
-        chart = base.mark_bar()
-        
-    return chart.interactive()
-
-# --- Chart 1: Profit by Sub-Category ---
-# Note: In Vega, we usually sort within the encoding. 
-chart1 = create_base_chart(
-    df_sub_cat, 
-    x_col='Sub-Category', 
-    y_col='Profit', 
-    title='Profit by Sub-Category'
-)
-
-# --- Chart 2: Top 10 States by Sales (Blue) ---
-chart2 = create_base_chart(
-    df_state, 
-    x_col='State', 
-    y_col='Amount', 
-    title='Top 10 States by Sales', 
-    color_hex='#3b82f6'
-)
-
-# --- Chart 3: Top 10 Customers by Sales (Green) ---
-chart3 = create_base_chart(
-    df_customer, 
-    x_col='CustomerName', 
-    y_col='Amount', 
-    title='Top 10 Customers by Sales', 
-    color_hex='#10b981'
-)
-
-# ┌──────────────────────────────────────────────────────────────────────────────┐
-# │ 7. Dash 应用布局配置 (Layout & Styles)                                      │
-# └──────────────────────────────────────────────────────────────────────────────┘
-
-app = Dash(__name__)
-
+# ┌────────────────────────────────────────────────────────────────────────────────┐
+# │ 4. Configuration & Helper functions (create_kpi_card, create_base_chart, etc.) │
+# └────────────────────────────────────────────────────────────────────────────────┘
 styles = {
     'page_container': {
         'fontFamily': 'sans-serif',
@@ -157,6 +97,31 @@ def create_kpi_card(title, value):
         html.Div(value, style=styles['kpi_value'])
     ])
 
+def create_base_chart(data, x_col, y_col, title, color_hex=None, sort_y=True):
+    base = alt.Chart(data).encode(
+        x=alt.X(x_col, sort='-y' if sort_y else None, axis=alt.Axis(labelAngle=-45)),
+        y=y_col,
+        tooltip=[x_col, y_col]
+    ).properties(
+        title=title,
+        height=280,
+        width='container'
+    )
+    chart = base.mark_bar(color=color_hex) if color_hex else base.mark_bar()
+    return chart.interactive()
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ 5. Chart creation (using the helpers)                                        │
+# └──────────────────────────────────────────────────────────────────────────────┘
+chart1 = create_base_chart(df_sub_cat, 'Sub-Category', 'Profit', 'Profit by Sub-Category')
+chart2 = create_base_chart(df_state, 'State', 'Amount', 'Top 10 States by Sales', '#3b82f6')
+chart3 = create_base_chart(df_customer, 'CustomerName', 'Amount', 'Top 10 Customers by Sales', '#10b981')
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ 6. Dash Layout                                                               │
+# └──────────────────────────────────────────────────────────────────────────────┘
+app = Dash(__name__) 
+
 # --- Main Layout ---
 app.layout = html.Div(style=styles['page_container'], children=[
     
@@ -204,7 +169,7 @@ app.layout = html.Div(style=styles['page_container'], children=[
 ])
 
 # ┌──────────────────────────────────────────────────────────────────────────────┐
-# │ 8. 启动服务器 (Run Server)                                                  │
+# │ 7. Run server                                                                │
 # └──────────────────────────────────────────────────────────────────────────────┘
 if __name__ == '__main__':
     app.run(debug=True, port=8081)
