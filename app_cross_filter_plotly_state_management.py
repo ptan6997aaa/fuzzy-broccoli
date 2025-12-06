@@ -299,4 +299,4 @@ def update_visuals(sel_sub, sel_state, sel_cust):
     return k_amt, k_prof, k_qty, k_ords, fig_sub, fig_state, fig_cust, status_text 
 
 if __name__ == "__main__":
-    app.run_server(debug=True, port=8050)
+    app.run(debug=True, port=8050)
