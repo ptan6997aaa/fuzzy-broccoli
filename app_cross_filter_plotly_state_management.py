@@ -69,7 +69,7 @@ app.layout = dbc.Container([
 
     # ── Header ──
     dbc.Row([
-        dbc.Col(html.H2("📊 Sales Intelligence Dashboard", className="fw-bold my-3"), width=9),
+        dbc.Col(html.H2("📊 Product Sales Report", className="fw-bold my-3"), width=9),
         dbc.Col(
             dbc.Button(
                 "↺ Reset All Filters", 
@@ -258,13 +258,21 @@ def update_visuals(sel_sub, sel_state, sel_cust):
             return fig
         
         # 聚合数据
-        df_g = df_in.groupby(x_col if orientation=='v' else y_col)[y_col if orientation=='v' else x_col].sum().reset_index()
-        # 排序
-        sort_col = y_col if orientation=='v' else x_col
-        df_g = df_g.sort_values(sort_col, ascending=True if orientation=='h' else False).head(8) # Top 8
+        group_col = y_col if orientation == 'h' else x_col
+        value_col = x_col if orientation == 'h' else y_col
+        
+        df_g = df_in.groupby(group_col)[value_col].sum().reset_index()
+
+        # 始终按数值【降序】排列，以确保 .head(8) 取到的是数值最大的前8名
+        df_g = df_g.sort_values(value_col, ascending=False).head(8)
+
+        # 如果是水平图，为了让最大的柱子在视觉上排在最上方（Plotly默认Y轴从下到上），
+        # 你可以在这里把数据反转，或者在 layout 中设置 autorange='reversed' 
+        if orientation == 'h':
+            df_g = df_g.iloc[::-1] # 反转顺序，让最大的在下面（Plotly绘制时会把第一个画在最下，Y轴看起来就是最大的在最上）
 
         # 动态颜色逻辑：选中的高亮，其他的变灰
-        axis_col = x_col if orientation=='v' else y_col
+        axis_col = group_col
         colors = [color_high if (selected_val == "All" or str(val) == str(selected_val)) else color_low for val in df_g[axis_col]]
 
         fig = px.bar(df_g, x=x_col, y=y_col, orientation=orientation, text_auto='.2s')
@@ -299,4 +307,4 @@ def update_visuals(sel_sub, sel_state, sel_cust):
     return k_amt, k_prof, k_qty, k_ords, fig_sub, fig_state, fig_cust, status_text 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=8050)
+    app.run(debug=True, port=8051)
