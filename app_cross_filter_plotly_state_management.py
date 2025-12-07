@@ -12,15 +12,12 @@ import os
 # │ 1. DATA LOADING & PREPROCESSING                                              │
 # └──────────────────────────────────────────────────────────────────────────────┘
 def load_data():
-    """
-    尝试读取本地 CSV，如果失败则生成模拟数据。
-    这确保了代码在任何环境下都能直接运行。
-    """
     try:
         if os.path.exists("Details.csv") and os.path.exists("Orders.csv"):
             print("Loading local CSV files...")
             df_d = pd.read_csv("Details.csv")
             df_o = pd.read_csv("Orders.csv")
+            # 内连接合并（确保只保留双方都有的 Order ID）
             df_merged = pd.merge(df_d, df_o, on="Order ID", how="inner")
         else:
             raise FileNotFoundError("Files not found")
@@ -63,8 +60,11 @@ CHART_CARD_STYLE = {
 app.layout = dbc.Container([
     # ── State Storage (存储筛选状态，不显示在页面上) ──
     # 使用 Store 可以在多个回调之间保持状态，实现多条件组合筛选
+    # store-subcat: 存储 Sub-Category 的筛选值 (默认 'All')
     dcc.Store(id='store-subcat', data='All'),
+    # store-state: 存储 State 的筛选值 (默认 'All')
     dcc.Store(id='store-state', data='All'),
+    # store-state: 存储 Customer 的筛选值 (默认 'All')
     dcc.Store(id='store-customer', data='All'),
 
     # ── Header ──
@@ -138,15 +138,23 @@ app.layout = dbc.Container([
 @app.callback(
     # 输出：更新3个Store的值，并重置3个图表的clickData(为了允许反选)
     [Output('store-subcat', 'data'), 
+    # 当前用户选中的【州】列表
      Output('store-state', 'data'),
+     # 当前用户选中的【客户】列表 
      Output('store-customer', 'data'),
+     # 用来保存当前选项，供所有下游图表读取并过滤数据, 重置子类别图的点击高亮选中状态 (视觉效果) 
      Output('chart-subcat', 'clickData'),
+     # 用来保存当前选项，供所有下游图表读取并过滤数据, 重置州图的点击高亮选中状态 (视觉效果)  
      Output('chart-state', 'clickData'),
+     # 用来保存当前选项，供所有下游图表读取并过滤数据, 重置客户图的点击高亮选中状态 (视觉效果)  
      Output('chart-customer', 'clickData')],
     # 输入：监听点击事件
-    [Input('btn-reset', 'n_clicks'),
+    [Input('clear-btn', 'n_clicks'),
+    # 点击子类别柱状图 
      Input('chart-subcat', 'clickData'),
+     # 点击州图
      Input('chart-state', 'clickData'),
+     # 点击客户图
      Input('chart-customer', 'clickData')],
     # 状态：读取当前的筛选值
     [State('store-subcat', 'data'), 
@@ -173,6 +181,7 @@ def manage_filters(n_clicks, click_sub, click_state, click_cust, curr_sub, curr_
 
     # 1. 重置逻辑
     if trigger_id == 'btn-reset':
+        # 对应回调函数中定义的 6 个 Output 
         return "All", "All", "All", None, None, None
 
     # 辅助函数：处理 Toggle (反选) 逻辑
@@ -188,14 +197,17 @@ def manage_filters(n_clicks, click_sub, click_state, click_cust, curr_sub, curr_
             return current_filter
 
     # 2. 处理各图表点击
+    # Sub-Category 图（水平 → 用 'y' 
     if trigger_id == 'chart-subcat' and click_sub:
         new_sub = get_new_filter_value(click_sub, curr_sub, key_name='y') # 柱状图是横向的，类别在 y 轴
         return new_sub, curr_state, curr_cust, None, None, None
 
+    # State 图（垂直 → 用 'x' ）
     if trigger_id == 'chart-state' and click_state:
         new_state = get_new_filter_value(click_state, curr_state, key_name='x')
         return curr_sub, new_state, curr_cust, None, None, None
 
+    # Customer 图（垂直 → 用 'x'） 
     if trigger_id == 'chart-customer' and click_cust:
         new_cust = get_new_filter_value(click_cust, curr_cust, key_name='x')
         return curr_sub, curr_state, new_cust, None, None, None
@@ -207,21 +219,26 @@ def manage_filters(n_clicks, click_sub, click_state, click_cust, curr_sub, curr_
 # │ 4. LOGIC PART B: VISUALIZATION UPDATES (渲染核心)                             │
 # └──────────────────────────────────────────────────────────────────────────────┘
 @app.callback(
-    [Output('kpi-amount', 'children'),
-     Output('kpi-profit', 'children'),
-     Output('kpi-quantity', 'children'),
-     Output('kpi-orders', 'children'),
-     Output('chart-subcat', 'figure'),
-     Output('chart-state', 'figure'),
-     Output('chart-customer', 'figure'),
-     Output('filter-status', 'children')],
-    [Input('store-subcat', 'data'),
-     Input('store-state', 'data'),
-     Input('store-customer', 'data')]
+    # ==================== 输出部分（共 8 个）====================
+    # 这些是回调函数需要更新/返回新值的组件和属性
+    [Output('kpi-amount', 'children'),      # 总销售额 KPI 卡片显示的数字/文字
+     Output('kpi-profit', 'children'),      # 总利润 KPI 卡片显示的内容
+     Output('kpi-quantity', 'children'),    # 销售数量 KPI
+     Output('kpi-orders', 'children'),      # 订单数量 KPI
+     Output('chart-subcat', 'figure'),      # 子类别销量图（柱状图/饼图等），完整更新 figure 对象
+     Output('chart-state', 'figure'),       # 地区（州/省）销量分布图，完整更新 figure
+     Output('chart-customer', 'figure'),    # 客户分析图，完整更新 figure
+     Output('filter-status', 'children'),],  # 显示当前过滤条件的文字提示 
+
+    # ==================== 输入部分（共 3 个）====================
+    # 只要以下任一组件的属性发生变化，就会触发回调函数执行
+    [Input('store-subcat', 'data'),         # dcc.Store 存储的用户选择的【子类别】列表）
+     Input('store-state', 'data'),          # dcc.Store 存储的用户选择的【地区/州】列表
+     Input('store-customer', 'data')]       # dcc.Store 存储的用户选择的【客户】列表 
 )
 def update_visuals(sel_sub, sel_state, sel_cust):
     """
-    根据 Store 中的状态，过滤数据，计算 KPI，并重新绘制图表。
+    根据 Store 中的状态，过滤数据，计算 KPI, 并重新绘制图表。
     """
     
     # ── 数据过滤核心函数 ──
@@ -230,6 +247,7 @@ def update_visuals(sel_sub, sel_state, sel_cust):
     # 我们希望看到所有柱子，但选中的那根高亮。
     def filter_df(ignore_sub=False, ignore_state=False, ignore_cust=False):
         d = df.copy()
+        # "ignore_X=True" allows that specific chart to show all bars (context) while highlighting selection 
         if not ignore_sub and sel_sub != "All":
             d = d[d["Sub-Category"] == sel_sub]
         if not ignore_state and sel_state != "All":
@@ -238,7 +256,7 @@ def update_visuals(sel_sub, sel_state, sel_cust):
             d = d[d["CustomerName"] == sel_cust]
         return d
 
-    # 1. 计算 KPI (应用所有过滤条件)
+    # 计算 KPI (应用所有过滤条件)
     df_kpi = filter_df()
     if df_kpi.empty:
         k_amt, k_prof, k_qty, k_ords = "$0", "$0", "0", "0"
@@ -248,7 +266,7 @@ def update_visuals(sel_sub, sel_state, sel_cust):
         k_qty = f"{df_kpi['Quantity'].sum():,}"
         k_ords = f"{df_kpi['Order ID'].nunique():,}"
 
-    # 2. 绘图辅助函数：统一风格
+    # 绘图辅助函数：统一风格
     def build_bar_chart(df_in, x_col, y_col, selected_val, orientation='v', color_high='#667eea', color_low='#e0e0e0'):
         if df_in.empty:
             # 空数据处理
@@ -288,7 +306,7 @@ def update_visuals(sel_sub, sel_state, sel_cust):
         )
         return fig
 
-    # 3. 生成图表
+    # 生成图表 
     # Chart 1: Sub-Category (忽略自身的筛选，以便显示上下文)
     df_sub = filter_df(ignore_sub=True)
     fig_sub = build_bar_chart(df_sub, "Profit", "Sub-Category", sel_sub, orientation='h', color_high='#764ba2')
@@ -307,4 +325,4 @@ def update_visuals(sel_sub, sel_state, sel_cust):
     return k_amt, k_prof, k_qty, k_ords, fig_sub, fig_state, fig_cust, status_text 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=8051)
+    app.run(debug=True, port=8081)
