@@ -197,12 +197,12 @@ def manage_filters(n_clicks, click_sub, click_state, click_cust, curr_sub, curr_
             return current_filter
 
     # 2. 处理各图表点击
-    # Sub-Category 图（水平 → 用 'y' 
+    # Sub-Category 图（水平 → 用 'y'） 
     if trigger_id == 'chart-subcat' and click_sub:
         new_sub = get_new_filter_value(click_sub, curr_sub, key_name='y') # 柱状图是横向的，类别在 y 轴
         return new_sub, curr_state, curr_cust, None, None, None
 
-    # State 图（垂直 → 用 'x' ）
+    # State 图（垂直 → 用 'x'）
     if trigger_id == 'chart-state' and click_state:
         new_state = get_new_filter_value(click_state, curr_state, key_name='x')
         return curr_sub, new_state, curr_cust, None, None, None
