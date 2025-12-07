@@ -22,7 +22,7 @@ if "Category" in df_global.columns:
     df_global["Category"] = df_global["Category"].astype(str).str.strip()
 
 # ┌──────────────────────────────────────────────────────────────────────────────┐
-# │ 3. KPI & Chart Data calculations                                                             │
+# │ 3. KPI & Chart Data calculations                                             │
 # └──────────────────────────────────────────────────────────────────────────────┘
 # --- Calculate Global KPIs ---
 total_amount = df_global['Amount'].sum()
