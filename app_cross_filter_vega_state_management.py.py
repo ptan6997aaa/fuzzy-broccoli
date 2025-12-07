@@ -56,8 +56,12 @@ CHART_CARD_STYLE = {
 
 app.layout = dbc.Container([
     # ── State Storage ──
+    # 使用 Store 可以在多个回调之间保持状态，实现多条件组合筛选
+    # store-subcat: 存储 Sub-Category 的筛选值 (默认 'All')
     dcc.Store(id='store-subcat', data='All'),
+    # store-state: 存储 State 的筛选值 (默认 'All')
     dcc.Store(id='store-state', data='All'),
+    # store-state: 存储 Customer 的筛选值 (默认 'All')
     dcc.Store(id='store-customer', data='All'),
 
     # ── Header ──
