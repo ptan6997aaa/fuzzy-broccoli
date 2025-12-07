@@ -149,7 +149,7 @@ app.layout = dbc.Container([
      # 用来保存当前选项，供所有下游图表读取并过滤数据, 重置客户图的点击高亮选中状态 (视觉效果)  
      Output('chart-customer', 'clickData')],
     # 输入：监听点击事件
-    [Input('clear-btn', 'n_clicks'),
+    [Input('btn-reset', 'n_clicks'),
     # 点击子类别柱状图 
      Input('chart-subcat', 'clickData'),
      # 点击州图
