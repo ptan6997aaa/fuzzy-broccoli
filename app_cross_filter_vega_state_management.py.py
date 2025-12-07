@@ -37,6 +37,7 @@ df = load_data()
 # │ 2. UI LAYOUT (替换 dcc.Graph 为 dvc.Vega)                                     │
 # └──────────────────────────────────────────────────────────────────────────────┘
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+server = app.server
 
 KPI_STYLE = {
     "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
