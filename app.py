@@ -1,31 +1,39 @@
 import dash
-from dash import dcc, html, Input, Output, State, callback_context, no_update
+from dash import dcc, html, Input, Output, State, callback_context
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
+import dash_vega_components as dvc # 核心组件库
+import altair as alt
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-import numpy as np
 import os
 
 # ┌──────────────────────────────────────────────────────────────────────────────┐
-# │ 1. DATA LOADING & PREPROCESSING                                              │
+# │ 1. DATA LOADING & PREPROCESSING (与原版保持一致)                              │
 # └──────────────────────────────────────────────────────────────────────────────┘
 def load_data():
     try:
+        # 这里假设你本地有文件，为了演示方便，如果文件不存在，我生成一些模拟数据
         if os.path.exists("Details.csv") and os.path.exists("Orders.csv"):
-            print("Loading local CSV files...")
             df_d = pd.read_csv("Details.csv")
             df_o = pd.read_csv("Orders.csv")
-            # 内连接合并（确保只保留双方都有的 Order ID）
             df_merged = pd.merge(df_d, df_o, on="Order ID", how="inner")
         else:
+            # 模拟数据生成 (Fallback)
             raise FileNotFoundError("Files not found")
     except Exception as e:
-        print(f"Warning: {e}. Generating mock data for demonstration...")
+        print(f"Loading Mock Data: {e}")
+        # 生成简单的模拟数据以确保代码可运行
+        data = {
+            'Order ID': [f'ORD-{i}' for i in range(100)],
+            'Sub-Category': ['Chairs', 'Phones', 'Tables', 'Binders']*25,
+            'State': ['California', 'Texas', 'New York', 'Florida']*25,
+            'CustomerName': ['Alice', 'Bob', 'Charlie', 'David']*25,
+            'Amount': [100, 200, 150, 300]*25,
+            'Profit': [10, 50, 20, 80]*25,
+            'Quantity': [1, 2, 3, 1]*25
+        }
+        df_merged = pd.DataFrame(data)
 
-    # 数据清洗
-    # 统一字符串格式，防止 'Chairs ' 和 'Chairs' 不匹配
     str_cols = ["Sub-Category", "State", "CustomerName"]
     for col in str_cols:
         if col in df_merged.columns:
@@ -33,18 +41,15 @@ def load_data():
             
     return df_merged
 
-# 初始化数据
 df = load_data()
 
 # ┌──────────────────────────────────────────────────────────────────────────────┐
-# │ 2. UI LAYOUT & STYLES (Bootstrap 布局)                                       │
+# │ 2. UI LAYOUT (替换 dcc.Graph 为 dvc.Vega)                                     │
 # └──────────────────────────────────────────────────────────────────────────────┘
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-server = app.server
 
-# 样式配置
 KPI_STYLE = {
-    "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", # 紫色渐变
+    "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
     "color": "white",
     "box-shadow": "0 4px 6px rgba(0,0,0,0.1)",
     "border": "none",
@@ -54,79 +59,55 @@ KPI_STYLE = {
 CHART_CARD_STYLE = {
     "box-shadow": "0 2px 4px rgba(0,0,0,0.05)",
     "border": "none",
-    "border-radius": "8px"
+    "border-radius": "8px",
+    "overflow": "hidden" # 防止 Vega 图表溢出
 }
 
 app.layout = dbc.Container([
-    # ── State Storage (存储筛选状态，不显示在页面上) ──
-    # 使用 Store 可以在多个回调之间保持状态，实现多条件组合筛选
-    # store-subcat: 存储 Sub-Category 的筛选值 (默认 'All')
+    # ── State Storage ──
     dcc.Store(id='store-subcat', data='All'),
-    # store-state: 存储 State 的筛选值 (默认 'All')
     dcc.Store(id='store-state', data='All'),
-    # store-state: 存储 Customer 的筛选值 (默认 'All')
     dcc.Store(id='store-customer', data='All'),
 
     # ── Header ──
     dbc.Row([
-        dbc.Col(html.H2("📊 Product Sales Report", className="fw-bold my-3"), width=9),
+        dbc.Col(html.H2("📊 Product Sales Report (Vega Version)", className="fw-bold my-3"), width=9),
         dbc.Col(
-            dbc.Button(
-                "↺ Reset All Filters", 
-                id="btn-reset", 
-                color="danger", 
-                outline=True, 
-                className="mt-4 w-100 shadow-sm"
-            ),
+            dbc.Button("↺ Reset All Filters", id="btn-reset", color="danger", outline=True, className="mt-4 w-100 shadow-sm"),
             width=3
         )
     ], className="mb-4 border-bottom pb-3"),
 
-    # ── Row 1: KPI Cards ──
+    # ── Row 1: KPI Cards (保持不变) ──
     dbc.Row([
-        dbc.Col(dbc.Card(dbc.CardBody([
-            html.H6("Total Sales", className="opacity-75"),
-            html.H3(id="kpi-amount", className="fw-bold")
-        ]), style=KPI_STYLE), width=3),
-
-        dbc.Col(dbc.Card(dbc.CardBody([
-            html.H6("Total Profit", className="opacity-75"),
-            html.H3(id="kpi-profit", className="fw-bold")
-        ]), style=KPI_STYLE), width=3),
-
-        dbc.Col(dbc.Card(dbc.CardBody([
-            html.H6("Quantity Sold", className="opacity-75"),
-            html.H3(id="kpi-quantity", className="fw-bold")
-        ]), style=KPI_STYLE), width=3),
-
-        dbc.Col(dbc.Card(dbc.CardBody([
-            html.H6("Total Orders", className="opacity-75"),
-            html.H3(id="kpi-orders", className="fw-bold")
-        ]), style=KPI_STYLE), width=3),
+        dbc.Col(dbc.Card(dbc.CardBody([html.H6("Total Sales"), html.H3(id="kpi-amount", className="fw-bold")]), style=KPI_STYLE), width=3),
+        dbc.Col(dbc.Card(dbc.CardBody([html.H6("Total Profit"), html.H3(id="kpi-profit", className="fw-bold")]), style=KPI_STYLE), width=3),
+        dbc.Col(dbc.Card(dbc.CardBody([html.H6("Quantity Sold"), html.H3(id="kpi-quantity", className="fw-bold")]), style=KPI_STYLE), width=3),
+        dbc.Col(dbc.Card(dbc.CardBody([html.H6("Total Orders"), html.H3(id="kpi-orders", className="fw-bold")]), style=KPI_STYLE), width=3),
     ], className="mb-4"),
 
-    # ── Row 2: Charts ──
+    # ── Row 2: Charts (使用 dvc.Vega) ──
+    # 注意：我们需要定义 signalsToObserve，这告诉 Dash 要监听 Vega 图表内部的哪个参数变化
     dbc.Row([
         # Chart 1
         dbc.Col(dbc.Card([
             dbc.CardHeader("Profit by Sub-Category", className="bg-white fw-bold border-0"),
-            dbc.CardBody(dcc.Graph(id="chart-subcat", config={'displayModeBar': False}, style={'height': '320px'}))
+            dbc.CardBody(dvc.Vega(id="chart-subcat", signalsToObserve=["sel_subcat"], style={'width': '100%'}))
         ], style=CHART_CARD_STYLE), width=4),
 
         # Chart 2
         dbc.Col(dbc.Card([
             dbc.CardHeader("Sales by State", className="bg-white fw-bold border-0"),
-            dbc.CardBody(dcc.Graph(id="chart-state", config={'displayModeBar': False}, style={'height': '320px'}))
+            dbc.CardBody(dvc.Vega(id="chart-state", signalsToObserve=["sel_state"], style={'width': '100%'}))
         ], style=CHART_CARD_STYLE), width=4),
 
         # Chart 3
         dbc.Col(dbc.Card([
             dbc.CardHeader("Top Customers", className="bg-white fw-bold border-0"),
-            dbc.CardBody(dcc.Graph(id="chart-customer", config={'displayModeBar': False}, style={'height': '320px'}))
+            dbc.CardBody(dvc.Vega(id="chart-customer", signalsToObserve=["sel_cust"], style={'width': '100%'}))
         ], style=CHART_CARD_STYLE), width=4),
     ]),
     
-    # Footer Status
     dbc.Row(dbc.Col(html.Div(id="filter-status", className="text-muted small mt-4 text-end fst-italic")))
 
 ], fluid=True, className="bg-light vh-100 p-4")
@@ -136,118 +117,94 @@ app.layout = dbc.Container([
 # │ 3. LOGIC PART A: FILTER STATE MANAGEMENT (交互逻辑核心)                       │
 # └──────────────────────────────────────────────────────────────────────────────┘
 @app.callback(
-    # 输出：更新3个Store的值，并重置3个图表的clickData(为了允许反选)
     [Output('store-subcat', 'data'), 
-    # 当前用户选中的【州】列表
      Output('store-state', 'data'),
-     # 当前用户选中的【客户】列表 
-     Output('store-customer', 'data'),
-     # 用来保存当前选项，供所有下游图表读取并过滤数据, 重置子类别图的点击高亮选中状态 (视觉效果) 
-     Output('chart-subcat', 'clickData'),
-     # 用来保存当前选项，供所有下游图表读取并过滤数据, 重置州图的点击高亮选中状态 (视觉效果)  
-     Output('chart-state', 'clickData'),
-     # 用来保存当前选项，供所有下游图表读取并过滤数据, 重置客户图的点击高亮选中状态 (视觉效果)  
-     Output('chart-customer', 'clickData')],
-    # 输入：监听点击事件
+     Output('store-customer', 'data')],
     [Input('btn-reset', 'n_clicks'),
-    # 点击子类别柱状图 
-     Input('chart-subcat', 'clickData'),
-     # 点击州图
-     Input('chart-state', 'clickData'),
-     # 点击客户图
-     Input('chart-customer', 'clickData')],
-    # 状态：读取当前的筛选值
+     Input('chart-subcat', 'signalData'),   # 监听 Vega 信号
+     Input('chart-state', 'signalData'),
+     Input('chart-customer', 'signalData')],
     [State('store-subcat', 'data'), 
      State('store-state', 'data'),
      State('store-customer', 'data')]
 )
-def manage_filters(n_clicks, click_sub, click_state, click_cust, curr_sub, curr_state, curr_cust):
+def manage_filters(n_clicks, sig_sub, sig_state, sig_cust, curr_sub, curr_state, curr_cust):
     """
-    负责管理筛选状态。
-    逻辑：当用户点击图表时，判断是'选中'还是'取消选中'，并更新对应的 Store。
-    最后强制重置图表的 clickData 为 None，以便 Dash 能够捕获下一次同样的点击。
+    解析 Vega 的 signalData 并更新 Store。
     """
     ctx = callback_context
     if not ctx.triggered:
-        return "All", "All", "All", None, None, None
+        return "All", "All", "All"
     
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
-    # 防止无限循环：如果是因为 clickData 被重置为 None 而触发，则忽略
-    if (trigger_id == 'chart-subcat' and click_sub is None) or \
-       (trigger_id == 'chart-state' and click_state is None) or \
-       (trigger_id == 'chart-customer' and click_cust is None):
-        raise PreventUpdate
-
     # 1. 重置逻辑
     if trigger_id == 'btn-reset':
-        # 对应回调函数中定义的 6 个 Output 
-        return "All", "All", "All", None, None, None
+        return "All", "All", "All"
 
-    # 辅助函数：处理 Toggle (反选) 逻辑
-    def get_new_filter_value(click_data, current_filter, key_name):
-        try:
-            # 获取点击的值
-            clicked_val = str(click_data['points'][0][key_name]).strip()
-            # 如果点击的值等于当前筛选值 -> 说明用户想取消筛选 -> 返回 "All"
-            if str(current_filter) != "All" and clicked_val == str(current_filter):
+    # 辅助函数：解析 Vega 信号并处理 Toggle (反选)
+    def process_signal(signal_data, signal_name, key_name, current_filter):
+        # 如果 signal_data 是 None 或者没有对应的 signal_name (通常发生在重置图表时)，不做改变
+        if not signal_data or signal_name not in signal_data:
+            return current_filter
+        
+        # 获取 Vega 传递过来的数据列表
+        # 结构通常是: {'sel_subcat': {'Sub-Category': ['Chairs']}}
+        selection_content = signal_data[signal_name]
+        
+        # 如果列表为空，说明用户点击空白处取消了选择
+        if not selection_content: 
+            # 这是一个策略选择：点击空白处是否重置？通常是的。
+            # 但为了配合下方的 Toggle 逻辑，我们这里主要看是否有值。
+            # 如果 Altair 的 selection 模式是 toggle，第二次点击会发空列表。
+            return "All"
+
+        if key_name in selection_content and len(selection_content[key_name]) > 0:
+            clicked_val = selection_content[key_name][0]
+            # Toggle 逻辑：如果点击的等于当前的 -> 重置
+            if str(current_filter) != "All" and str(clicked_val) == str(current_filter):
                 return "All"
             return clicked_val
-        except:
-            return current_filter
+        
+        return current_filter
 
     # 2. 处理各图表点击
-    # Sub-Category 图（水平 → 用 'y' 
-    if trigger_id == 'chart-subcat' and click_sub:
-        new_sub = get_new_filter_value(click_sub, curr_sub, key_name='y') # 柱状图是横向的，类别在 y 轴
-        return new_sub, curr_state, curr_cust, None, None, None
+    if trigger_id == 'chart-subcat':
+        new_sub = process_signal(sig_sub, 'sel_subcat', 'Sub-Category', curr_sub)
+        return new_sub, curr_state, curr_cust
 
-    # State 图（垂直 → 用 'x' ）
-    if trigger_id == 'chart-state' and click_state:
-        new_state = get_new_filter_value(click_state, curr_state, key_name='x')
-        return curr_sub, new_state, curr_cust, None, None, None
+    if trigger_id == 'chart-state':
+        new_state = process_signal(sig_state, 'sel_state', 'State', curr_state)
+        return curr_sub, new_state, curr_cust
 
-    # Customer 图（垂直 → 用 'x'） 
-    if trigger_id == 'chart-customer' and click_cust:
-        new_cust = get_new_filter_value(click_cust, curr_cust, key_name='x')
-        return curr_sub, curr_state, new_cust, None, None, None
+    if trigger_id == 'chart-customer':
+        new_cust = process_signal(sig_cust, 'sel_cust', 'CustomerName', curr_cust)
+        return curr_sub, curr_state, new_cust
 
-    return curr_sub, curr_state, curr_cust, None, None, None
+    return curr_sub, curr_state, curr_cust
 
 
 # ┌──────────────────────────────────────────────────────────────────────────────┐
 # │ 4. LOGIC PART B: VISUALIZATION UPDATES (渲染核心)                             │
 # └──────────────────────────────────────────────────────────────────────────────┘
 @app.callback(
-    # ==================== 输出部分（共 8 个）====================
-    # 这些是回调函数需要更新/返回新值的组件和属性
-    [Output('kpi-amount', 'children'),      # 总销售额 KPI 卡片显示的数字/文字
-     Output('kpi-profit', 'children'),      # 总利润 KPI 卡片显示的内容
-     Output('kpi-quantity', 'children'),    # 销售数量 KPI
-     Output('kpi-orders', 'children'),      # 订单数量 KPI
-     Output('chart-subcat', 'figure'),      # 子类别销量图（柱状图/饼图等），完整更新 figure 对象
-     Output('chart-state', 'figure'),       # 地区（州/省）销量分布图，完整更新 figure
-     Output('chart-customer', 'figure'),    # 客户分析图，完整更新 figure
-     Output('filter-status', 'children'),],  # 显示当前过滤条件的文字提示 
-
-    # ==================== 输入部分（共 3 个）====================
-    # 只要以下任一组件的属性发生变化，就会触发回调函数执行
-    [Input('store-subcat', 'data'),         # dcc.Store 存储的用户选择的【子类别】列表）
-     Input('store-state', 'data'),          # dcc.Store 存储的用户选择的【地区/州】列表
-     Input('store-customer', 'data')]       # dcc.Store 存储的用户选择的【客户】列表 
+    [Output('kpi-amount', 'children'),
+     Output('kpi-profit', 'children'),
+     Output('kpi-quantity', 'children'),
+     Output('kpi-orders', 'children'),
+     Output('chart-subcat', 'spec'),    # 更新 spec
+     Output('chart-state', 'spec'),     # 更新 spec
+     Output('chart-customer', 'spec'),  # 更新 spec
+     Output('filter-status', 'children')],
+    [Input('store-subcat', 'data'),
+     Input('store-state', 'data'),
+     Input('store-customer', 'data')]
 )
 def update_visuals(sel_sub, sel_state, sel_cust):
-    """
-    根据 Store 中的状态，过滤数据，计算 KPI, 并重新绘制图表。
-    """
     
-    # ── 数据过滤核心函数 ──
-    # ignore_key 参数用于：当绘制“Sub-Category”图表时，即使选中了某个 Sub-Category，
-    # 我们也不应该过滤掉其他 Sub-Category 的条形，否则图表就只剩一根柱子了。
-    # 我们希望看到所有柱子，但选中的那根高亮。
+    # ── 数据过滤 (与原版逻辑一致) ──
     def filter_df(ignore_sub=False, ignore_state=False, ignore_cust=False):
         d = df.copy()
-        # "ignore_X=True" allows that specific chart to show all bars (context) while highlighting selection 
         if not ignore_sub and sel_sub != "All":
             d = d[d["Sub-Category"] == sel_sub]
         if not ignore_state and sel_state != "All":
@@ -256,7 +213,7 @@ def update_visuals(sel_sub, sel_state, sel_cust):
             d = d[d["CustomerName"] == sel_cust]
         return d
 
-    # 计算 KPI (应用所有过滤条件)
+    # 计算 KPI
     df_kpi = filter_df()
     if df_kpi.empty:
         k_amt, k_prof, k_qty, k_ords = "$0", "$0", "0", "0"
@@ -266,60 +223,82 @@ def update_visuals(sel_sub, sel_state, sel_cust):
         k_qty = f"{df_kpi['Quantity'].sum():,}"
         k_ords = f"{df_kpi['Order ID'].nunique():,}"
 
-    # 绘图辅助函数：统一风格
-    def build_bar_chart(df_in, x_col, y_col, selected_val, orientation='v', color_high='#667eea', color_low='#e0e0e0'):
+    # ── Altair 绘图辅助函数 ──
+    # ── Altair 绘图辅助函数 (修复版) ──
+    def build_altair_chart(df_in, x_col, y_col, selected_val, signal_name, orientation='v', color_high='#667eea', color_low='#e0e0e0'):
         if df_in.empty:
-            # 空数据处理
-            fig = go.Figure()
-            fig.add_annotation(text="No Data", showarrow=False, font=dict(size=20, color="gray"))
-            fig.update_layout(xaxis_visible=False, yaxis_visible=False)
-            return fig
-        
-        # 聚合数据
-        group_col = y_col if orientation == 'h' else x_col
-        value_col = x_col if orientation == 'h' else y_col
+            return alt.Chart(pd.DataFrame({'text': ['No Data']})).mark_text().encode(text='text').to_dict()
+
+        # 数据聚合逻辑保持不变
+        group_col = x_col if orientation == 'v' else y_col
+        value_col = y_col if orientation == 'v' else x_col
         
         df_g = df_in.groupby(group_col)[value_col].sum().reset_index()
-
-        # 始终按数值【降序】排列，以确保 .head(8) 取到的是数值最大的前8名
         df_g = df_g.sort_values(value_col, ascending=False).head(8)
 
-        # 如果是水平图，为了让最大的柱子在视觉上排在最上方（Plotly默认Y轴从下到上），
-        # 你可以在这里把数据反转，或者在 layout 中设置 autorange='reversed' 
-        if orientation == 'h':
-            df_g = df_g.iloc[::-1] # 反转顺序，让最大的在下面（Plotly绘制时会把第一个画在最下，Y轴看起来就是最大的在最上）
+        # ---------------------------------------------------------
+        # [关键修复] 1. 构造初始化值
+        # 如果当前有选中的值，我们需要告诉 Vega 初始化时就选中它
+        # Vega 的 value 格式是一个列表，包含匹配的字段字典
+        # ---------------------------------------------------------
+        init_value = None
+        if selected_val != "All":
+            init_value = [{group_col: selected_val}]
 
-        # 动态颜色逻辑：选中的高亮，其他的变灰
-        axis_col = group_col
-        colors = [color_high if (selected_val == "All" or str(val) == str(selected_val)) else color_low for val in df_g[axis_col]]
-
-        fig = px.bar(df_g, x=x_col, y=y_col, orientation=orientation, text_auto='.2s')
-        fig.update_traces(marker_color=colors, textfont_size=12)
-        
-        # 精简 Layout
-        fig.update_layout(
-            margin=dict(t=10, l=10, r=10, b=10),
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            xaxis_title=None,
-            yaxis_title=None
+        # [关键修复] 2. 定义点击参数时，传入 value
+        click_param = alt.selection_point(
+            name=signal_name, 
+            fields=[group_col],
+            value=init_value  # <--- 这里是防止弹回的核心！
         )
-        return fig
 
-    # 生成图表 
-    # Chart 1: Sub-Category (忽略自身的筛选，以便显示上下文)
+        # 3. 定义颜色条件 (视觉反馈)
+        # 即便 Vega 内部选中了，我们依然保留这个 Python 控制的颜色逻辑，双重保险
+        color_condition = alt.condition(
+            alt.datum[group_col] == selected_val,
+            alt.value(color_high),
+            alt.value(color_low)
+        )
+        if selected_val == "All":
+             color_condition = alt.value(color_high)
+
+        # 4. 基础图表构建
+        base = alt.Chart(df_g).encode(
+            tooltip=[group_col, value_col]
+        ).properties(
+            height=280,
+            width='container'
+        )
+
+        if orientation == 'v':
+            chart = base.mark_bar().encode(
+                x=alt.X(group_col, sort='-y', axis=alt.Axis(labelAngle=-45, title=None)),
+                y=alt.Y(value_col, axis=alt.Axis(title=None)),
+                color=color_condition
+            )
+        else:
+            chart = base.mark_bar().encode(
+                x=alt.X(value_col, axis=alt.Axis(title=None)),
+                y=alt.Y(group_col, sort='-x', axis=alt.Axis(title=None)),
+                color=color_condition
+            )
+
+        chart = chart.add_params(click_param)
+        
+        return chart.to_dict()
+
+    # Chart 1: Sub-Category (水平, 紫色)
     df_sub = filter_df(ignore_sub=True)
-    fig_sub = build_bar_chart(df_sub, "Profit", "Sub-Category", sel_sub, orientation='h', color_high='#764ba2')
+    fig_sub = build_altair_chart(df_sub, "Profit", "Sub-Category", sel_sub, "sel_subcat", 'h', '#764ba2')
 
-    # Chart 2: State
+    # Chart 2: State (垂直, 蓝色)
     df_state = filter_df(ignore_state=True)
-    fig_state = build_bar_chart(df_state, "State", "Amount", sel_state, orientation='v', color_high='#667eea')
+    fig_state = build_altair_chart(df_state, "State", "Amount", sel_state, "sel_state", 'v', '#667eea')
 
-    # Chart 3: Customer
+    # Chart 3: Customer (垂直, 深蓝)
     df_cust = filter_df(ignore_cust=True)
-    fig_cust = build_bar_chart(df_cust, "CustomerName", "Amount", sel_cust, orientation='v', color_high='#182848')
+    fig_cust = build_altair_chart(df_cust, "CustomerName", "Amount", sel_cust, "sel_cust", 'v', '#182848')
 
-    # 状态栏文字
     status_text = f"Current Filters: Sub-Category='{sel_sub}' | State='{sel_state}' | Customer='{sel_cust}'"
 
     return k_amt, k_prof, k_qty, k_ords, fig_sub, fig_state, fig_cust, status_text 
