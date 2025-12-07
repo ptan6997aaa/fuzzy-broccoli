@@ -18,22 +18,12 @@ def load_data():
             df_o = pd.read_csv("Orders.csv")
             df_merged = pd.merge(df_d, df_o, on="Order ID", how="inner")
         else:
-            # 模拟数据生成 (Fallback)
             raise FileNotFoundError("Files not found")
     except Exception as e:
         print(f"Loading Mock Data: {e}")
-        # 生成简单的模拟数据以确保代码可运行
-        data = {
-            'Order ID': [f'ORD-{i}' for i in range(100)],
-            'Sub-Category': ['Chairs', 'Phones', 'Tables', 'Binders']*25,
-            'State': ['California', 'Texas', 'New York', 'Florida']*25,
-            'CustomerName': ['Alice', 'Bob', 'Charlie', 'David']*25,
-            'Amount': [100, 200, 150, 300]*25,
-            'Profit': [10, 50, 20, 80]*25,
-            'Quantity': [1, 2, 3, 1]*25
-        }
-        df_merged = pd.DataFrame(data)
 
+    # 数据清洗
+    # 统一字符串格式，比如防止 'Chairs ' 和 'Chairs' 不匹配
     str_cols = ["Sub-Category", "State", "CustomerName"]
     for col in str_cols:
         if col in df_merged.columns:

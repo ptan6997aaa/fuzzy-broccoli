@@ -25,7 +25,7 @@ def load_data():
         print(f"Warning: {e}. Generating mock data for demonstration...")
 
     # 数据清洗
-    # 统一字符串格式，防止 'Chairs ' 和 'Chairs' 不匹配
+    # 统一字符串格式，比如防止 'Chairs ' 和 'Chairs' 不匹配
     str_cols = ["Sub-Category", "State", "CustomerName"]
     for col in str_cols:
         if col in df_merged.columns:
