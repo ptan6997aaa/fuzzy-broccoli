@@ -87,19 +87,19 @@ app.layout = dbc.Container([
         # Chart 1
         dbc.Col(dbc.Card([
             dbc.CardHeader("Profit by Sub-Category", className="bg-white fw-bold border-0"),
-            dbc.CardBody(dvc.Vega(id="chart-subcat", signalsToObserve=["sel_subcat"], style={'width': '100%'}))
+            dbc.CardBody(dvc.Vega(id="chart-subcat", signalsToObserve=["sel_subcat"], style={'width': '100%', 'height': '300px'}))
         ], style=CHART_CARD_STYLE), width=4),
 
         # Chart 2
         dbc.Col(dbc.Card([
             dbc.CardHeader("Sales by State", className="bg-white fw-bold border-0"),
-            dbc.CardBody(dvc.Vega(id="chart-state", signalsToObserve=["sel_state"], style={'width': '100%'}))
+            dbc.CardBody(dvc.Vega(id="chart-state", signalsToObserve=["sel_state"], style={'width': '100%', 'height': '300px'}))
         ], style=CHART_CARD_STYLE), width=4),
 
         # Chart 3
         dbc.Col(dbc.Card([
             dbc.CardHeader("Top Customers", className="bg-white fw-bold border-0"),
-            dbc.CardBody(dvc.Vega(id="chart-customer", signalsToObserve=["sel_cust"], style={'width': '100%'}))
+            dbc.CardBody(dvc.Vega(id="chart-customer", signalsToObserve=["sel_cust"], style={'width': '100%', 'height': '300px'}))
         ], style=CHART_CARD_STYLE), width=4),
     ]),
     
