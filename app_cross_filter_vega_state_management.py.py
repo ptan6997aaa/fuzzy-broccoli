@@ -2,7 +2,7 @@ import dash
 from dash import dcc, html, Input, Output, State, callback_context
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
-import dash_vega_components as dvc # 核心组件库
+import dash_vega_components as dvc  # 核心组件库
 import altair as alt
 import pandas as pd
 import os
@@ -10,6 +10,8 @@ import os
 # ┌──────────────────────────────────────────────────────────────────────────────┐
 # │ 1. DATA LOADING & PREPROCESSING (与原版保持一致)                              │
 # └──────────────────────────────────────────────────────────────────────────────┘
+
+
 def load_data():
     try:
         # 这里假设你本地有文件，为了演示方便，如果文件不存在，我生成一些模拟数据
@@ -28,8 +30,9 @@ def load_data():
     for col in str_cols:
         if col in df_merged.columns:
             df_merged[col] = df_merged[col].astype(str).str.strip()
-            
+
     return df_merged
+
 
 df = load_data()
 
@@ -51,7 +54,7 @@ CHART_CARD_STYLE = {
     "box-shadow": "0 2px 4px rgba(0,0,0,0.05)",
     "border": "none",
     "border-radius": "8px",
-    "overflow": "hidden" # 防止 Vega 图表溢出
+    "overflow": "hidden"  # 防止 Vega 图表溢出
 }
 
 app.layout = dbc.Container([
@@ -66,19 +69,25 @@ app.layout = dbc.Container([
 
     # ── Header ──
     dbc.Row([
-        dbc.Col(html.H2("📊 Product Sales Report", className="fw-bold my-3"), width=9),
+        dbc.Col(html.H2("📊 Product Sales Report",
+                className="fw-bold my-3"), width=9),
         dbc.Col(
-            dbc.Button("↺ Reset All Filters", id="btn-reset", color="danger", outline=True, className="mt-4 w-100 shadow-sm"),
+            dbc.Button("↺ Reset All Filters", id="btn-reset", color="danger",
+                       outline=True, className="mt-4 w-100 shadow-sm"),
             width=3
         )
     ], className="mb-4 border-bottom pb-3"),
 
     # ── Row 1: KPI Cards (保持不变) ──
     dbc.Row([
-        dbc.Col(dbc.Card(dbc.CardBody([html.H6("Total Sales"), html.H3(id="kpi-amount", className="fw-bold")]), style=KPI_STYLE), width=3),
-        dbc.Col(dbc.Card(dbc.CardBody([html.H6("Total Profit"), html.H3(id="kpi-profit", className="fw-bold")]), style=KPI_STYLE), width=3),
-        dbc.Col(dbc.Card(dbc.CardBody([html.H6("Quantity Sold"), html.H3(id="kpi-quantity", className="fw-bold")]), style=KPI_STYLE), width=3),
-        dbc.Col(dbc.Card(dbc.CardBody([html.H6("Total Orders"), html.H3(id="kpi-orders", className="fw-bold")]), style=KPI_STYLE), width=3),
+        dbc.Col(dbc.Card(dbc.CardBody([html.H6("Total Sales"), html.H3(
+            id="kpi-amount", className="fw-bold")]), style=KPI_STYLE), width=3),
+        dbc.Col(dbc.Card(dbc.CardBody([html.H6("Total Profit"), html.H3(
+            id="kpi-profit", className="fw-bold")]), style=KPI_STYLE), width=3),
+        dbc.Col(dbc.Card(dbc.CardBody([html.H6("Quantity Sold"), html.H3(
+            id="kpi-quantity", className="fw-bold")]), style=KPI_STYLE), width=3),
+        dbc.Col(dbc.Card(dbc.CardBody([html.H6("Total Orders"), html.H3(
+            id="kpi-orders", className="fw-bold")]), style=KPI_STYLE), width=3),
     ], className="mb-4"),
 
     # ── Row 2: Charts (使用 dvc.Vega) ──
@@ -86,24 +95,34 @@ app.layout = dbc.Container([
     dbc.Row([
         # Chart 1
         dbc.Col(dbc.Card([
-            dbc.CardHeader("Profit by Sub-Category", className="bg-white fw-bold border-0"),
-            dbc.CardBody(dvc.Vega(id="chart-subcat", signalsToObserve=["sel_subcat"], style={'width': '100%', 'height': '300px'}))
+            dbc.CardHeader("Profit by Sub-Category",
+                           className="bg-white fw-bold border-0"),
+            dbc.CardBody(dvc.Vega(id="chart-subcat", signalsToObserve=[
+                         "sel_subcat"], style={'width': '100%', 'height': '300px'}),
+                         className="d-flex justify-content-center align-items-center")
         ], style=CHART_CARD_STYLE), width=4),
 
         # Chart 2
         dbc.Col(dbc.Card([
-            dbc.CardHeader("Sales by State", className="bg-white fw-bold border-0"),
-            dbc.CardBody(dvc.Vega(id="chart-state", signalsToObserve=["sel_state"], style={'width': '100%', 'height': '300px'}))
+            dbc.CardHeader("Sales by State",
+                           className="bg-white fw-bold border-0"),
+            dbc.CardBody(dvc.Vega(id="chart-state", signalsToObserve=[
+                         "sel_state"], style={'width': '100%', 'height': '300px'}),
+                         className="d-flex justify-content-center align-items-center")
         ], style=CHART_CARD_STYLE), width=4),
 
         # Chart 3
         dbc.Col(dbc.Card([
-            dbc.CardHeader("Top Customers", className="bg-white fw-bold border-0"),
-            dbc.CardBody(dvc.Vega(id="chart-customer", signalsToObserve=["sel_cust"], style={'width': '100%', 'height': '300px'}))
+            dbc.CardHeader("Top Customers",
+                           className="bg-white fw-bold border-0"),
+            dbc.CardBody(dvc.Vega(id="chart-customer", signalsToObserve=[
+                         "sel_cust"], style={'width': '100%', 'height': '300px'}),
+                         className="d-flex justify-content-center align-items-center")
         ], style=CHART_CARD_STYLE), width=4),
     ]),
-    
-    dbc.Row(dbc.Col(html.Div(id="filter-status", className="text-muted small mt-4 text-end fst-italic")))
+
+    dbc.Row(dbc.Col(html.Div(id="filter-status",
+            className="text-muted small mt-4 text-end fst-italic")))
 
 ], fluid=True, className="bg-light vh-100 p-4")
 
@@ -112,14 +131,14 @@ app.layout = dbc.Container([
 # │ 3. LOGIC PART A: FILTER STATE MANAGEMENT (交互逻辑核心)                       │
 # └──────────────────────────────────────────────────────────────────────────────┘
 @app.callback(
-    [Output('store-subcat', 'data'), 
+    [Output('store-subcat', 'data'),
      Output('store-state', 'data'),
      Output('store-customer', 'data')],
     [Input('btn-reset', 'n_clicks'),
      Input('chart-subcat', 'signalData'),   # 监听 Vega 信号
      Input('chart-state', 'signalData'),
      Input('chart-customer', 'signalData')],
-    [State('store-subcat', 'data'), 
+    [State('store-subcat', 'data'),
      State('store-state', 'data'),
      State('store-customer', 'data')]
 )
@@ -130,7 +149,7 @@ def manage_filters(n_clicks, sig_sub, sig_state, sig_cust, curr_sub, curr_state,
     ctx = callback_context
     if not ctx.triggered:
         return "All", "All", "All"
-    
+
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
     # 1. 重置逻辑
@@ -142,13 +161,13 @@ def manage_filters(n_clicks, sig_sub, sig_state, sig_cust, curr_sub, curr_state,
         # 如果 signal_data 是 None 或者没有对应的 signal_name (通常发生在重置图表时)，不做改变
         if not signal_data or signal_name not in signal_data:
             return current_filter
-        
+
         # 获取 Vega 传递过来的数据列表
         # 结构通常是: {'sel_subcat': {'Sub-Category': ['Chairs']}}
         selection_content = signal_data[signal_name]
-        
+
         # 如果列表为空，说明用户点击空白处取消了选择
-        if not selection_content: 
+        if not selection_content:
             # 这是一个策略选择：点击空白处是否重置？通常是的。
             # 但为了配合下方的 Toggle 逻辑，我们这里主要看是否有值。
             # 如果 Altair 的 selection 模式是 toggle，第二次点击会发空列表。
@@ -160,12 +179,13 @@ def manage_filters(n_clicks, sig_sub, sig_state, sig_cust, curr_sub, curr_state,
             if str(current_filter) != "All" and str(clicked_val) == str(current_filter):
                 return "All"
             return clicked_val
-        
+
         return current_filter
 
     # 2. 处理各图表点击
     if trigger_id == 'chart-subcat':
-        new_sub = process_signal(sig_sub, 'sel_subcat', 'Sub-Category', curr_sub)
+        new_sub = process_signal(
+            sig_sub, 'sel_subcat', 'Sub-Category', curr_sub)
         return new_sub, curr_state, curr_cust
 
     if trigger_id == 'chart-state':
@@ -173,7 +193,8 @@ def manage_filters(n_clicks, sig_sub, sig_state, sig_cust, curr_sub, curr_state,
         return curr_sub, new_state, curr_cust
 
     if trigger_id == 'chart-customer':
-        new_cust = process_signal(sig_cust, 'sel_cust', 'CustomerName', curr_cust)
+        new_cust = process_signal(
+            sig_cust, 'sel_cust', 'CustomerName', curr_cust)
         return curr_sub, curr_state, new_cust
 
     return curr_sub, curr_state, curr_cust
@@ -196,7 +217,7 @@ def manage_filters(n_clicks, sig_sub, sig_state, sig_cust, curr_sub, curr_state,
      Input('store-customer', 'data')]
 )
 def update_visuals(sel_sub, sel_state, sel_cust):
-    
+
     # ── 数据过滤 (与原版逻辑一致) ──
     def filter_df(ignore_sub=False, ignore_state=False, ignore_cust=False):
         d = df.copy()
@@ -227,7 +248,7 @@ def update_visuals(sel_sub, sel_state, sel_cust):
         # 数据聚合逻辑保持不变
         group_col = x_col if orientation == 'v' else y_col
         value_col = y_col if orientation == 'v' else x_col
-        
+
         df_g = df_in.groupby(group_col)[value_col].sum().reset_index()
         df_g = df_g.sort_values(value_col, ascending=False).head(8)
 
@@ -242,7 +263,7 @@ def update_visuals(sel_sub, sel_state, sel_cust):
 
         # [关键修复] 2. 定义点击参数时，传入 value
         click_param = alt.selection_point(
-            name=signal_name, 
+            name=signal_name,
             fields=[group_col],
             value=init_value  # <--- 这里是防止弹回的核心！
         )
@@ -255,19 +276,20 @@ def update_visuals(sel_sub, sel_state, sel_cust):
             alt.value(color_low)
         )
         if selected_val == "All":
-             color_condition = alt.value(color_high)
+            color_condition = alt.value(color_high)
 
         # 4. 基础图表构建
         base = alt.Chart(df_g).encode(
             tooltip=[group_col, value_col]
         ).properties(
-            height=280,
-            width='container'
+            height=230,
+            width=400
         )
 
         if orientation == 'v':
             chart = base.mark_bar().encode(
-                x=alt.X(group_col, sort='-y', axis=alt.Axis(labelAngle=-45, title=None)),
+                x=alt.X(group_col, sort='-y',
+                        axis=alt.Axis(labelAngle=-45, title=None)),
                 y=alt.Y(value_col, axis=alt.Axis(title=None)),
                 color=color_condition
             )
@@ -279,24 +301,28 @@ def update_visuals(sel_sub, sel_state, sel_cust):
             )
 
         chart = chart.add_params(click_param)
-        
+
         return chart.to_dict()
 
     # Chart 1: Sub-Category (水平, 紫色)
     df_sub = filter_df(ignore_sub=True)
-    fig_sub = build_altair_chart(df_sub, "Profit", "Sub-Category", sel_sub, "sel_subcat", 'h', '#764ba2')
+    fig_sub = build_altair_chart(
+        df_sub, "Profit", "Sub-Category", sel_sub, "sel_subcat", 'h', '#764ba2')
 
     # Chart 2: State (垂直, 蓝色)
     df_state = filter_df(ignore_state=True)
-    fig_state = build_altair_chart(df_state, "State", "Amount", sel_state, "sel_state", 'v', '#667eea')
+    fig_state = build_altair_chart(
+        df_state, "State", "Amount", sel_state, "sel_state", 'v', '#667eea')
 
     # Chart 3: Customer (垂直, 深蓝)
     df_cust = filter_df(ignore_cust=True)
-    fig_cust = build_altair_chart(df_cust, "CustomerName", "Amount", sel_cust, "sel_cust", 'v', '#182848')
+    fig_cust = build_altair_chart(
+        df_cust, "CustomerName", "Amount", sel_cust, "sel_cust", 'v', '#182848')
 
     status_text = f"Current Filters: Sub-Category='{sel_sub}' | State='{sel_state}' | Customer='{sel_cust}'"
 
-    return k_amt, k_prof, k_qty, k_ords, fig_sub, fig_state, fig_cust, status_text 
+    return k_amt, k_prof, k_qty, k_ords, fig_sub, fig_state, fig_cust, status_text
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=8081)
