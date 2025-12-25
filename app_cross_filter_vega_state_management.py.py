@@ -66,7 +66,7 @@ app.layout = dbc.Container([
 
     # ── Header ──
     dbc.Row([
-        dbc.Col(html.H2("📊 Product Sales Report (Vega Version)", className="fw-bold my-3"), width=9),
+        dbc.Col(html.H2("📊 Product Sales Report", className="fw-bold my-3"), width=9),
         dbc.Col(
             dbc.Button("↺ Reset All Filters", id="btn-reset", color="danger", outline=True, className="mt-4 w-100 shadow-sm"),
             width=3
